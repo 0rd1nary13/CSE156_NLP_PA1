@@ -1,46 +1,15 @@
 # Python
 __pycache__/
-*.py[cod]
-*$py.class
-*.so
-.Python
-*.egg-info/
-dist/
-build/
+*.pyc
+*.pyo
 
 # Virtual Environment
 .venv/
 venv/
-env/
-ENV/
+
+# OS
+.DS_Store
 
 # IDE
 .vscode/
 .idea/
-*.swp
-*.swo
-*~
-
-# OS
-.DS_Store
-Thumbs.db
-
-# Jupyter Notebook
-.ipynb_checkpoints
-
-# PyTorch
-*.pth
-*.pt
-
-# Generated plots/images (keep assignment PDF)
-*.png
-*.pdf
-!CSE156_PA1.pdf
-
-# Logs
-*.log
-
-# Data files (if too large, consider git-lfs)
-# Uncomment if data files are too large:
-# data/*.txt
-# data/*.relativized.txt
