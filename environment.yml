@@ -1,0 +1,11 @@
+name: cse156_pa1
+channels:
+  - pytorch
+  - defaults
+dependencies:
+  - python=3.11
+  - pytorch
+  - numpy
+  - scikit-learn
+  - matplotlib
+  - pip
