@@ -1,20 +1,39 @@
 # models.py
 
+from __future__ import annotations
+
+import argparse
+import time
+from typing import List, Tuple
+
+import matplotlib.pyplot as plt
 import torch
 from torch import nn
-import torch.nn.functional as F
-from sklearn.feature_extraction.text import CountVectorizer
-from sentiment_data import read_sentiment_examples
-from torch.utils.data import Dataset, DataLoader
-import time
-import argparse
-import matplotlib.pyplot as plt
 from torch.utils.data import DataLoader
-from BOWmodels import SentimentDatasetBOW, NN2BOW, NN3BOW
+
+from BOWmodels import NN2BOW, NN3BOW, SentimentDatasetBOW
+from DANmodels import build_best_config, train_dan
+from sentiment_data import read_word_embeddings
 
 
 # Training function
-def train_epoch(data_loader, model, loss_fn, optimizer):
+def train_epoch(
+    data_loader: DataLoader,
+    model: nn.Module,
+    loss_fn: nn.Module,
+    optimizer: torch.optim.Optimizer,
+) -> Tuple[float, float]:
+    """Run one epoch of training for bag-of-words models.
+
+    Args:
+        data_loader: Training data loader.
+        model: Model to train.
+        loss_fn: Loss function.
+        optimizer: Optimizer for updating parameters.
+
+    Returns:
+        Tuple of (accuracy, average_loss).
+    """
     size = len(data_loader.dataset)
     num_batches = len(data_loader)
     model.train()
@@ -39,7 +58,23 @@ def train_epoch(data_loader, model, loss_fn, optimizer):
 
 
 # Evaluation function
-def eval_epoch(data_loader, model, loss_fn, optimizer):
+def eval_epoch(
+    data_loader: DataLoader,
+    model: nn.Module,
+    loss_fn: nn.Module,
+    optimizer: torch.optim.Optimizer,
+) -> Tuple[float, float]:
+    """Evaluate bag-of-words models for one epoch.
+
+    Args:
+        data_loader: Evaluation data loader.
+        model: Model to evaluate.
+        loss_fn: Loss function.
+        optimizer: Optimizer (unused, kept for signature parity).
+
+    Returns:
+        Tuple of (accuracy, average_loss).
+    """
     size = len(data_loader.dataset)
     num_batches = len(data_loader)
     model.eval()
@@ -60,7 +95,21 @@ def eval_epoch(data_loader, model, loss_fn, optimizer):
 
 
 # Experiment function to run training and evaluation for multiple epochs
-def experiment(model, train_loader, test_loader):
+def experiment(
+    model: nn.Module,
+    train_loader: DataLoader,
+    test_loader: DataLoader,
+) -> Tuple[List[float], List[float]]:
+    """Run a full training loop for bag-of-words models.
+
+    Args:
+        model: Model to train.
+        train_loader: Training data loader.
+        test_loader: Development data loader.
+
+    Returns:
+        Lists of training and dev accuracies per epoch.
+    """
     loss_fn = nn.NLLLoss()
     optimizer = torch.optim.Adam(model.parameters(), lr=0.0001)
 
@@ -79,30 +128,35 @@ def experiment(model, train_loader, test_loader):
     return all_train_accuracy, all_test_accuracy
 
 
-def main():
+def main() -> None:
+    """Entry point for training the BOW or DAN models."""
 
     # Set up argument parser
-    parser = argparse.ArgumentParser(description='Run model training based on specified model type')
-    parser.add_argument('--model', type=str, required=True, help='Model type to train (e.g., BOW)')
+    parser = argparse.ArgumentParser(description="Run model training based on specified model type")
+    parser.add_argument("--model", type=str, required=True, help="Model type to train (e.g., BOW)")
+    parser.add_argument(
+        "--random-init",
+        action="store_true",
+        help="Use random embeddings for the DAN model.",
+    )
 
     # Parse the command-line arguments
     args = parser.parse_args()
 
-    # Load dataset
-    start_time = time.time()
-
-    train_data = SentimentDatasetBOW("data/train.txt")
-    dev_data = SentimentDatasetBOW("data/dev.txt", vectorizer=train_data.vectorizer, train=False)
-    train_loader = DataLoader(train_data, batch_size=16, shuffle=True)
-    test_loader = DataLoader(dev_data, batch_size=16, shuffle=False)
-
-    end_time = time.time()
-    elapsed_time = end_time - start_time
-    print(f"Data loaded in : {elapsed_time} seconds")
-
-
     # Check if the model type is "BOW"
     if args.model == "BOW":
+        # Load dataset
+        start_time = time.time()
+
+        train_data = SentimentDatasetBOW("data/train.txt")
+        dev_data = SentimentDatasetBOW("data/dev.txt", vectorizer=train_data.vectorizer, train=False)
+        train_loader = DataLoader(train_data, batch_size=16, shuffle=True)
+        test_loader = DataLoader(dev_data, batch_size=16, shuffle=False)
+
+        end_time = time.time()
+        elapsed_time = end_time - start_time
+        print(f"Data loaded in : {elapsed_time} seconds")
+
         # Train and evaluate NN2
         start_time = time.time()
         print('\n2 layers:')
@@ -145,8 +199,14 @@ def main():
         # plt.show()
 
     elif args.model == "DAN":
-        #TODO:  Train and evaluate your DAN
-        print("DAN model not implemented yet")
+        config = build_best_config(random_init=args.random_init)
+        embeddings = read_word_embeddings(config.embeddings_path)
+        device = torch.device("cpu")
+        best_dev, best_epoch = train_dan(embeddings, config, device)
+        print(
+            f"Best dev accuracy: {best_dev:.3f} at epoch {best_epoch} "
+            f"(random_init={config.random_init})"
+        )
 
 if __name__ == "__main__":
     main()
